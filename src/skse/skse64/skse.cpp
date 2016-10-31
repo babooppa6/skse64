@@ -63,11 +63,11 @@ void SKSE_Initialize(void)
 		GetSystemTimeAsFileTime(&now);
 
 #if RUNTIME
-		_MESSAGE("SKSE runtime: initialize (version = %d.%d.%d %08X %08X%08X, os = %s)",
+		_MESSAGE("SKSE64 runtime: initialize (version = %d.%d.%d %08X %08X%08X, os = %s)",
 			SKSE_VERSION_INTEGER, SKSE_VERSION_INTEGER_MINOR, SKSE_VERSION_INTEGER_BETA, RUNTIME_VERSION,
 			now.dwHighDateTime, now.dwLowDateTime, GetOSInfoStr().c_str());
 #else
-		_MESSAGE("SKSE editor: initialize (version = %d.%d.%d %08X %08X%08X, os = %s)",
+		_MESSAGE("SKSE64 editor: initialize (version = %d.%d.%d %08X %08X%08X, os = %s)",
 			SKSE_VERSION_INTEGER, SKSE_VERSION_INTEGER_MINOR, SKSE_VERSION_INTEGER_BETA, EDITOR_VERSION,
 			now.dwHighDateTime, now.dwLowDateTime, GetOSInfoStr().c_str());
 #endif
@@ -76,37 +76,39 @@ void SKSE_Initialize(void)
 #ifdef _DEBUG
 		SetPriorityClass(GetCurrentProcess(), IDLE_PRIORITY_CLASS);
 
-		WaitForDebugger();
+		//WaitForDebugger();
 #endif
 
 //		Commands_Dump();
 
 		Hooks_Debug_Init();
-		Hooks_ObScript_Init();
-		Hooks_Papyrus_Init();
-		Hooks_NetImmerse_Init();
-		Hooks_Threads_Init();
-		Hooks_Handlers_Init();
+		//Hooks_ObScript_Init();
+		//Hooks_Papyrus_Init();
+		//Hooks_NetImmerse_Init();
+		//Hooks_Threads_Init();
+		//Hooks_Handlers_Init();
 
 		g_pluginManager.Init();
 
-		Hooks_Debug_Commit();
-		Hooks_Threads_Commit();
-		Hooks_Handlers_Commit();
-		Hooks_Scaleform_Commit();
-		Hooks_Gameplay_Commit();
-		Hooks_ObScript_Commit();
-		Hooks_Papyrus_Commit();
-		Hooks_UI_Commit();
-		Hooks_Camera_Commit();
-		Hooks_NetImmerse_Commit();
-		Hooks_Data_Commit();
-		Hooks_SaveLoad_Commit();
-		Init_CoreSerialization_Callbacks();
+		WaitForDebugger();
 
-		Hooks_DirectInput_Commit();
-		Hooks_Event_Commit();
-		Hooks_Diagnostics_Commit();
+		//Hooks_Debug_Commit();
+		//Hooks_Threads_Commit();
+		//Hooks_Handlers_Commit();
+		//Hooks_Scaleform_Commit();
+		Hooks_Gameplay_Commit();
+		//Hooks_ObScript_Commit();
+		//Hooks_Papyrus_Commit();
+		//Hooks_UI_Commit();
+		//Hooks_Camera_Commit();
+		//Hooks_NetImmerse_Commit();
+		//Hooks_Data_Commit();
+		//Hooks_SaveLoad_Commit();
+		//Init_CoreSerialization_Callbacks();
+
+		//Hooks_DirectInput_Commit();
+		//Hooks_Event_Commit();
+		//Hooks_Diagnostics_Commit();
 
 		FlushInstructionCache(GetCurrentProcess(), NULL, 0);
 
@@ -138,11 +140,11 @@ extern "C" {
 		switch(dwReason)
 		{
 		case DLL_PROCESS_ATTACH:
-		//	SKSE_Initialize();
+			SKSE_Initialize();
 			break;
 
 		case DLL_PROCESS_DETACH:
-		//	SKSE_DeInitialize();
+			SKSE_DeInitialize();
 			break;
 		};
 

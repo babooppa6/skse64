@@ -63,23 +63,18 @@ static UInt32 kHook_BGSKeyword_Create_Return = kHook_BGSKeyword_Base + 5;
 	}
 }*/
 
-static UInt32	kHook_ShowVersion_Base = 0x008A7020;
-static UInt32	kHook_ShowVersion_Enter = kHook_ShowVersion_Base + 0x5E;
-static UInt32	kHook_ShowVersion_Return = kHook_ShowVersion_Base + 0x63;
+
 static char		kHook_ShowVersion_FormatString[] =
 	"%s.%d (SKSE " __PREPRO_TOKEN_STR__(SKSE_VERSION_INTEGER) "."
 	__PREPRO_TOKEN_STR__(SKSE_VERSION_INTEGER_MINOR) "."
 	__PREPRO_TOKEN_STR__(SKSE_VERSION_INTEGER_BETA) " rel "
 	__PREPRO_TOKEN_STR__(SKSE_VERSION_RELEASEIDX) ")";
 
-/*static void __declspec(naked) Hook_ShowVersion(void)
-{
-	__asm
-	{
-		push	offset kHook_ShowVersion_FormatString
-		jmp		[kHook_ShowVersion_Return]
-	}
-}*/
+static UInt8    kHook_ShowVersion_Stub[] = {
+	0x49, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov r8, kHook_ShowVersion_FormatString
+	0x48, 0xB8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // mov rax, kHook_ShowVersion_Return
+	0xFF, 0xE0													// jmp rax
+};
 
 static const UInt32 kHook_Crosshair_LookupREFRByHandle_Base = 0x00739FD0;
 static const UInt32 kHook_Crosshair_LookupREFRByHandle_Enter = kHook_Crosshair_LookupREFRByHandle_Base + 0x64;
@@ -151,8 +146,25 @@ void Hooks_Gameplay_Commit(void)
 	}
 	*/
 
+	static uintptr_t	kHook_ShowVersion_Base = 0x140B8DDF0 - 0x140000000 + (uintptr_t)GetModuleHandleA(NULL);
+	static uintptr_t	kHook_ShowVersion_Enter = kHook_ShowVersion_Base + 0x78;
+	static uintptr_t	kHook_ShowVersion_Return = kHook_ShowVersion_Base + 0x7F;
+	static uintptr_t	kHook_ShowVersion_End = kHook_ShowVersion_Base + 0x143;
 	// show SKSE version in menu
-	
+	// JMP to cave
+	WriteRelJump(kHook_ShowVersion_Enter, kHook_ShowVersion_End);
+	// JMP to stub
+	SafeWrite8  (kHook_ShowVersion_End,      0x48);
+	SafeWrite8  (kHook_ShowVersion_End + 1,  0xB8);
+	SafeWrite64 (kHook_ShowVersion_End + 2,  (UInt64)&kHook_ShowVersion_Stub);
+	SafeWrite8  (kHook_ShowVersion_End + 10, 0xFF);
+	SafeWrite8  (kHook_ShowVersion_End + 11, 0xE0);
+
+	*(uintptr_t*)&kHook_ShowVersion_Stub[2] = (uintptr_t)kHook_ShowVersion_FormatString;
+	*(uintptr_t*)&kHook_ShowVersion_Stub[12] = kHook_ShowVersion_Return;
+
+	DWORD lel;
+	VirtualProtect(kHook_ShowVersion_Stub, sizeof(kHook_ShowVersion_Stub), PAGE_EXECUTE_READWRITE, &lel);
 
 	/*
 	// hook BGSKeyword ctor so we can rebuild the lookup table

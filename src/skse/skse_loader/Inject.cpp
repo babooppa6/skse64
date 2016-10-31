@@ -207,7 +207,7 @@ struct HookSetup
 							{
 								for (auto i = 0; i < 12; ++i)
 								{
-									if (cave[12] != 0xCC)
+									if (cave[i] != 0xCC)
 									{
 										_ERROR("Codecave is overwriting code!");
 										return false;

@@ -7,9 +7,9 @@ void SafeWrite64(uintptr_t addr, UInt64 data);
 void SafeWriteBuf(uintptr_t addr, void * data, UInt32 len);
 
 // 5 bytes
-void WriteRelJump(UInt32 jumpSrc, UInt32 jumpTgt);
-void WriteRelCall(UInt32 jumpSrc, UInt32 jumpTgt);
+void WriteRelJump(uintptr_t jumpSrc, uintptr_t jumpTgt);
+void WriteRelCall(uintptr_t jumpSrc, uintptr_t jumpTgt);
 
 // 6 bytes
-void WriteRelJnz(UInt32 jumpSrc, UInt32 jumpTgt);
-void WriteRelJle(UInt32 jumpSrc, UInt32 jumpTgt);
+void WriteRelJnz(uintptr_t jumpSrc, uintptr_t jumpTgt);
+void WriteRelJle(uintptr_t jumpSrc, uintptr_t jumpTgt);

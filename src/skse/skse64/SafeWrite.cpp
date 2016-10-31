@@ -45,28 +45,28 @@ void SafeWriteBuf(uintptr_t addr, void * data, UInt32 len)
 	VirtualProtect((void *)addr, len, oldProtect, &oldProtect);
 }
 
-void WriteRelJump(UInt32 jumpSrc, UInt32 jumpTgt)
+void WriteRelJump(uintptr_t jumpSrc, uintptr_t jumpTgt)
 {
 	// jmp rel32
 	SafeWrite8(jumpSrc, 0xE9);
 	SafeWrite32(jumpSrc + 1, jumpTgt - jumpSrc - 1 - 4);
 }
 
-void WriteRelCall(UInt32 jumpSrc, UInt32 jumpTgt)
+void WriteRelCall(uintptr_t jumpSrc, uintptr_t jumpTgt)
 {
 	// call rel32
 	SafeWrite8(jumpSrc, 0xE8);
 	SafeWrite32(jumpSrc + 1, jumpTgt - jumpSrc - 1 - 4);
 }
 
-void WriteRelJnz(UInt32 jumpSrc, UInt32 jumpTgt)
+void WriteRelJnz(uintptr_t jumpSrc, uintptr_t jumpTgt)
 {
 	// jnz rel32
 	SafeWrite16(jumpSrc, 0x850F);
 	SafeWrite32(jumpSrc + 2, jumpTgt - jumpSrc - 2 - 4);
 }
 
-void WriteRelJle(UInt32 jumpSrc, UInt32 jumpTgt)
+void WriteRelJle(uintptr_t jumpSrc, uintptr_t jumpTgt)
 {
 	// jle rel32
 	SafeWrite16(jumpSrc, 0x8E0F);
