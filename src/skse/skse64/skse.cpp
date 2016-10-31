@@ -138,11 +138,11 @@ extern "C" {
 		switch(dwReason)
 		{
 		case DLL_PROCESS_ATTACH:
-			SKSE_Initialize();
+		//	SKSE_Initialize();
 			break;
 
 		case DLL_PROCESS_DETACH:
-			SKSE_DeInitialize();
+		//	SKSE_DeInitialize();
 			break;
 		};
 

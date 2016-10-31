@@ -13,29 +13,60 @@ struct HookLayout
 
 	struct DoLoadLibrary
 	{
-		UInt8	push;		// 68
-		UInt32	strAddr;	// address
-		UInt8	indCall1;	// FF
-		UInt8	indCall2;	// 15
-		UInt32	callAddr;	// address
+		UInt8		pushRbx;	// 53
+		UInt8		movRbxRsp1; // 48
+		UInt8		movRbxRsp2; // 89
+		UInt8		movRbxRsp3; // E3
+		UInt8		subRsp1;	// 48
+		UInt8		subRsp2;	// 83
+		UInt8		subRsp3;	// EC
+		UInt8		subRsp4;	// 20
+		UInt8		movRcx1;	// 48
+		UInt8		movRcx2;	// B9
+		uintptr_t	strAddr;	// address
+		UInt8		movRdx1;	// 48
+		UInt8		movRdx2;	// BA
+		uintptr_t	callAddr;	// address
+		UInt8		callRdx1;	// FF
+		UInt8		callRdx2;	// 12
+		UInt8		movRsp1;    // 48
+		UInt8		movRsp2;    // 89
+		UInt8		movRsp3;    // DC
+		UInt8		popRbx;		// 5B
 
 		void	Clear(void)
 		{
 			// nops
-			push = 0x90;
-			strAddr = 0x90909090;
-			indCall1 = 0x90;
-			indCall2 = 0x90;
-			callAddr = 0x90909090;
+			std::memset(this, 0x90, sizeof(DoLoadLibrary));
 		}
 
-		void	Setup(UInt32 _strAddr, UInt32 _callAddr)
+		void	Setup(uintptr_t _strAddr, uintptr_t _callAddr)
 		{
-			push = 0x68;
+			pushRbx = 0x53;
+
+			movRbxRsp1 = 0x48;
+			movRbxRsp2 = 0x89;
+			movRbxRsp3 = 0xE3;
+
+			subRsp1 = 0x48;
+			subRsp2 = 0x83;
+			subRsp3 = 0xEC;
+			subRsp4 = 0x20;
+
+			movRcx1 = 0x48;
+			movRcx2 = 0xB9;
 			strAddr = _strAddr;
-			indCall1 = 0xFF;
-			indCall2 = 0x15;
+			movRdx1 = 0x48;
+			movRdx2 = 0xBA;
 			callAddr = _callAddr;
+			callRdx1 = 0xFF;
+			callRdx2 = 0x12;
+
+			movRsp1 = 0x48;
+			movRsp2 = 0x89;
+			movRsp3 = 0xDC;
+
+			popRbx = 0x5B;
 		}
 	};
 
@@ -43,13 +74,15 @@ struct HookLayout
 	UInt8			infLoop1;		// EB
 	UInt8			infLoop2;		// FF
 	DoLoadLibrary	loadLib[kNumLibs];
-	UInt8			callMain1;		// FF
-	UInt8			callMain2;		// 25
-	UInt32			callMainAddr;	// address
+	UInt8			movMainRax1;	// 48
+	UInt8			movMainRax2;	// B8
+	uintptr_t		callMainAddr;	// address
+	UInt8			jmpRax1;		// FF
+	UInt8			jmpRax2;		// E0
 
 	// data
 	char			libNames[kMaxLibNameLen * kNumLibs];
-	UInt32			mainAddr;
+	uintptr_t		mainAddr;
 
 	void	Init(ProcHookInfo * hookInfo)
 	{
@@ -64,9 +97,11 @@ struct HookLayout
 		for(UInt32 i = 0; i < kNumLibs; i++)
 			loadLib[i].Clear();
 
-		callMain1 = 0xFF;
-		callMain2 = 0x25;
+		movMainRax1 = 0x48;
+		movMainRax2 = 0xB8;
 		callMainAddr = 0;
+		jmpRax1 = 0xFF;
+		jmpRax2 = 0xE0;
 
 		memset(libNames, 0, sizeof(libNames));
 
@@ -97,8 +132,8 @@ struct HookSetup
 	HookLayout	m_data;
 
 	HANDLE	m_proc;
-	UInt32	m_base;
-	UInt32	m_loadLib;
+	uintptr_t	m_base;
+	uintptr_t	m_loadLib;
 
 	UInt32	m_libIdx;
 	UInt32	m_strOffset;
@@ -135,7 +170,7 @@ struct HookSetup
 			m_base = (uintptr_t)VirtualAllocEx(m_proc, NULL, sizeof(m_data), MEM_COMMIT, PAGE_EXECUTE_READWRITE);
 			if(m_base)
 			{
-				UInt32	hookBaseCallAddr;
+				
 				size_t	bytesTransferred = 0;
 
 				_MESSAGE("remote memory = %08X", m_base);
@@ -149,33 +184,73 @@ struct HookSetup
 					if (ReadProcessMemory(m_proc, pbi.PebBaseAddress, &peb, sizeof(peb), &length))
 					{
 						hookBaseAddr += (uintptr_t)peb.ImageBaseAddress;
+						m_loadLib += (uintptr_t)peb.ImageBaseAddress;
+
+						int32_t	hookBaseCallAddrLo;
 						// update the call
-						if (ReadProcessMemory(m_proc, (void *)(hookBaseAddr + 1), &hookBaseCallAddr, sizeof(hookBaseCallAddr), &bytesTransferred) &&
-							(bytesTransferred == sizeof(hookBaseCallAddr)))
+						if (ReadProcessMemory(m_proc, (void *)(hookBaseAddr + 1), &hookBaseCallAddrLo, sizeof(hookBaseCallAddrLo), &bytesTransferred) &&
+							(bytesTransferred == sizeof(hookBaseCallAddrLo)))
 						{
 							// adjust for relcall
-							hookBaseCallAddr += 5 + hookBaseAddr;
+							intptr_t hookBaseCallAddr = 5 + hookBaseAddr + hookBaseCallAddrLo;
 
 							_MESSAGE("old winmain = %08X", hookBaseCallAddr);
 
 							m_data.mainAddr = hookBaseCallAddr;
-							m_data.callMainAddr = GetRemoteOffset(&m_data.mainAddr);
+							m_data.callMainAddr = hookBaseCallAddr;
 
-							UInt32	newHookDst = m_base - hookBaseAddr - 5;
-							if (WriteProcessMemory(m_proc, (void *)(hookBaseAddr + 1), &newHookDst, sizeof(newHookDst), &bytesTransferred) &&
-								(bytesTransferred == sizeof(newHookDst)))
+							// Look for a code cave - adding 0x30 for now
+							uintptr_t caveAddress = hookBaseAddr + 0x30;
+
+							BYTE cave[12] = { 0 };
+							if (ReadProcessMemory(m_proc, (void*)caveAddress, cave, sizeof(cave), &bytesTransferred))
 							{
-								m_isInit = true;
-								result = true;
+								for (auto i = 0; i < 12; ++i)
+								{
+									if (cave[12] != 0xCC)
+									{
+										_ERROR("Codecave is overwriting code!");
+										return false;
+									}
+								}
+
+								// mov rax, val
+								cave[0] = 0x48;
+								cave[1] = 0xB8;
+								*(uintptr_t*)&cave[2] = m_base;
+								// jmp rax
+								cave[10] = 0xFF;
+								cave[11] = 0xE0;
+
+								if (WriteProcessMemory(m_proc, (void *)(caveAddress), &cave, sizeof(cave), &bytesTransferred) &&
+									(bytesTransferred == sizeof(cave)))
+								{
+
+									UInt32	newHookDst = 0x30 - 5;
+									if (WriteProcessMemory(m_proc, (void *)(hookBaseAddr + 1), &newHookDst, sizeof(newHookDst), &bytesTransferred) &&
+										(bytesTransferred == sizeof(newHookDst)))
+									{
+										m_isInit = true;
+										result = true;
+									}
+									else
+									{
+										_ERROR("couldn't write memory (update winmain)");
+									}
+								}
+								else
+								{
+									_ERROR("couldn't write memory (code cave)");
+								}
 							}
 							else
 							{
-								_ERROR("couldn't write memory (update winmain)");
+								_ERROR("couldn't read memory (code cave)");
 							}
 						}
 						else
 						{
-							_ERROR("couldn't read memory (update winmain)");
+							_ERROR("couldn't read memory (original winmain)");
 						}
 					}
 					else
@@ -239,8 +314,7 @@ struct HookSetup
 	bool	UpdateRemoteProc(void)
 	{
 		size_t	bytesTransferred;
-		return	WriteProcessMemory(m_proc, (void *)m_base, &m_data, sizeof(m_data), &bytesTransferred) &&
-			(bytesTransferred == sizeof(m_data));
+		return	WriteProcessMemory(m_proc, (void *)m_base, &m_data, sizeof(m_data), &bytesTransferred) && (bytesTransferred == sizeof(m_data));
 	}
 };
 
